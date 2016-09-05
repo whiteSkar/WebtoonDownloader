@@ -4,16 +4,18 @@ import os
 import requests
 
 
+# Globals
 webtoon_title = ""
 imgs_to_dl = []
 
 
+# Classes
 class NaverWebtoonParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         global imgs_to_dl
 
         if (tag == "img"):
-            if len(attrs) > 2 and len(attrs[0]) > 0 and attrs[0][0] == 'src' and attrs[2][0] == 'alt' and attrs[2][1] == 'comic content':
+            if len(attrs) > 2 and len(attrs[0]) > 0 and attrs[0][0] == 'src' and len(attrs[2]) > 1 and attrs[2][0] == 'alt' and attrs[2][1] == 'comic content':
                 imgs_to_dl.append(attrs[0][1])
 
     def handle_data(self, data):
@@ -23,8 +25,10 @@ class NaverWebtoonParser(HTMLParser):
         if self.get_starttag_text() == "<h3>" and data.strip():
             webtoon_title = data
 
+
+# Functions
 def download_ep(directory_path, webtoon_id, ep_id):
-    webtoon_ep_url = 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}&weekday=mon'.format(webtoon_id, ep_id)
+    webtoon_ep_url = 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)
 
     ep_main_page_r = requests.get(webtoon_ep_url)
     if ep_main_page_r.status_code != 200:
@@ -42,7 +46,7 @@ def download_ep(directory_path, webtoon_id, ep_id):
     #for img_url in imgs_to_dl:
     #    print(img_url)
 
-    headers = {'referer': 'http://comic.naver.com/webtoon/detail.nhn?titleId=183559&no=82'}
+    headers = {'referer': 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)}
 
     # ep_id for sorting purposes
     folder_path = directory_path + ('%04d_' % (ep_id,)) + webtoon_title
@@ -59,6 +63,7 @@ def download_ep(directory_path, webtoon_id, ep_id):
             outfile.write(r.content)
 
     return True
+
 
 directory_path = input('Input EXISTING directory path WITH SLASH AT THE BACK where you want to download the webtoon')
 webtoon_id = input('Input the webtoon id (eg. 183559): ')
