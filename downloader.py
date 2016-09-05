@@ -23,7 +23,7 @@ class NaverWebtoonParser(HTMLParser):
         if self.get_starttag_text() == "<h3>" and data.strip():
             webtoon_title = data
 
-def download_ep(webtoon_id, ep_id):
+def download_ep(directory_path, webtoon_id, ep_id):
     webtoon_ep_url = 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}&weekday=mon'.format(webtoon_id, ep_id)
 
     ep_main_page_r = requests.get(webtoon_ep_url)
@@ -45,7 +45,7 @@ def download_ep(webtoon_id, ep_id):
     headers = {'referer': 'http://comic.naver.com/webtoon/detail.nhn?titleId=183559&no=82'}
 
     # ep_id for sorting purposes
-    folder_path = ('%04d_' % (ep_id,)) + webtoon_title
+    folder_path = directory_path + ('%04d_' % (ep_id,)) + webtoon_title
     if not os.path.exists(folder_path):
         os.makedirs(folder_path)
 
@@ -60,10 +60,15 @@ def download_ep(webtoon_id, ep_id):
 
     return True
 
-webtoon_id = 183559
-start_id = 1
+directory_path = input('Input EXISTING directory path WITH SLASH AT THE BACK where you want to download the webtoon')
+webtoon_id = input('Input the webtoon id (eg. 183559): ')
+start_id = input('Input the episode id of the first episode you want to download (eg. 1): ')
 
-while download_ep(webtoon_id, start_id):
+# I'm too lazy to do error checking! I'm the only user!
+webtoon_id = int(webtoon_id)
+start_id = int(start_id)
+
+while download_ep(directory_path, webtoon_id, start_id):
     print("Downloading " + webtoon_title + "complete.")
     imgs_to_dl = []
     start_id += 1
