@@ -1,110 +1,106 @@
-from html.parser import HTMLParser
+import tkinter as tk
+import classes.NaverWebtoonDownloader as nwd
 
-import os
-import requests
-
-
-# Globals
-webtoon_title = ""
-imgs_to_dl = []
-newest_ep_id = 0
+from tkinter import scrolledtext
 
 
-# Classes
-class NaverWebtoonEpParser(HTMLParser):
-    def handle_starttag(self, tag, attrs):
-        global imgs_to_dl
+class WebtoonDownloader(tk.Frame):
+    def __init__(self, master=None):
+        master.wm_title("Webtoon Downloader")
+        master.protocol("WM_DELETE_WINDOWS", self.close_app)
 
-        if (tag == 'img'):
-            if len(attrs) > 2 and len(attrs[0]) > 0 and attrs[0][0] == 'src' and len(attrs[2]) > 1 and attrs[2][0] == 'alt' and attrs[2][1] == 'comic content':
-                imgs_to_dl.append(attrs[0][1])
-    
-    def handle_data(self, data):
-        global webtoon_title
+        tk.Frame.__init__(self, master)
+        self.pack(fill=tk.BOTH, expand=1)        
+        self.create_widgets()
+
+    def create_widgets(self):
+        menubar = tk.Menu(self)
         
-        # Yay there is only one tag that starts with h3!
-        if self.get_starttag_text() == "<h3>" and data.strip():
-            webtoon_title = data
+        menu = tk.Menu(menubar, tearoff=0)
+        menu.add_command(label="Exit", command=self.close_app)
+        menubar.add_cascade(label="Menu", menu=menu)
 
-class NaverWebtoonListPageParser(HTMLParser):
-    def handle_starttag(self, tag, attrs):
-        global newest_ep_id
+        self.master.config(menu=menubar)
+
+        # webtoon info
+        webtoon_info_frame = tk.Frame(self, relief=tk.RAISED, bd=1)
+        webtoon_info_frame.pack(side=tk.TOP, fill=tk.X)
+
+        # webtoon id/number
+        webtoon_id_frame = tk.Frame(webtoon_info_frame)
+        webtoon_id_frame.pack(side=tk.LEFT)
+
+        webtoon_id_label = tk.Label(webtoon_id_frame, text="Webtoon No.:")
+        webtoon_id_label.pack(side=tk.LEFT)
+       
+        max_webtoon_id_len = 6
+        webtoon_id_entry = tk.Entry(webtoon_id_frame, width=max_webtoon_id_len)
+        webtoon_id_entry.pack(side=tk.LEFT)
+        self.webtoon_id_entry = webtoon_id_entry
+
+        # the id/number of the episode of the webtoon you want to start downloading
+        start_ep_id_frame = tk.Frame(webtoon_info_frame)
+        start_ep_id_frame.pack(side=tk.LEFT)
+
+        start_ep_id_label = tk.Label(start_ep_id_frame, text="Start Episode No.:")
+        start_ep_id_label.pack(side=tk.LEFT)
+
+        max_start_ep_id_len = 4
+        start_ep_id_entry = tk.Entry(webtoon_info_frame, width=max_start_ep_id_len)
+        start_ep_id_entry.pack(side=tk.LEFT)
+        self.start_ep_id_entry = start_ep_id_entry
+       
+        # the location where you want the downloaded webtoons to be on disk
+        output_dir_path_frame = tk.Frame(self)
+        output_dir_path_frame.pack(side=tk.TOP, fill=tk.X)
+
+        output_dir_path_label = tk.Label(output_dir_path_frame, text="Download Location:")
+        output_dir_path_label.pack(side=tk.LEFT)
+
+        max_path_len = 100
+        output_dir_path_entry = tk.Entry(output_dir_path_frame, width=max_path_len)
+        output_dir_path_entry.pack(side=tk.LEFT)
+        self.output_dir_path_entry = output_dir_path_entry
+
+        # log console
+        log_frame = tk.Frame(self)
+        log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+
+        log_window = scrolledtext.ScrolledText(log_frame, height=10)
+        log_window.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
+        log_window.config(state=tk.DISABLED)
+        self.log_window = log_window
+
+        # download button        
+        download_btn_frame = tk.Frame(self)
+        download_btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        download_btn = tk.Button(download_btn_frame)
+        download_btn["text"] = "Download"
+        download_btn["command"] = self.download
+        download_btn.pack(side=tk.RIGHT)
+        self.download_btn = download_btn
+
+        # master things
+        self.master.update()
+        temporary_menubar_height = 30   # hacky way to fix the min height
+        min_height = self.master.winfo_height() + temporary_menubar_height
+        self.master.minsize(self.master.winfo_width(), min_height)
         
-        if (newest_ep_id == 0 and tag == 'a'):  # Lol.. too nested yo
-            if len(attrs) == 2 and len(attrs[0]) > 0 and attrs[0][0] == 'href': # len(attrs) == 2 is hacky but easy way to bypass '첫회보기' link
-                ep_no_identifier = 'no='
-                pos_ep_no = attrs[0][1].find(ep_no_identifier)
-                if pos_ep_no >= 0:
-                    pos_ep_no_end = attrs[0][1].find('&', pos_ep_no)
-                    if pos_ep_no_end == -1:
-                        pos_ep_no_end = len(attrs[0][1])
-                    newest_ep_id = int(attrs[0][1][pos_ep_no + len(ep_no_identifier) : pos_ep_no_end]) # You know.. Not gonna error check
-
-
-# Functions
-def download_ep(directory_path, webtoon_id, ep_id):
-    webtoon_ep_url = 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)
-
-    ep_main_page_r = requests.get(webtoon_ep_url)
-    if ep_main_page_r.status_code != 200:
-        print("Get request for episode main page failed")
-        exit()
-
-    parser = NaverWebtoonEpParser()
-    parser.feed(ep_main_page_r.text)
-
-    if len(imgs_to_dl) == 0:
-        print("There are no images to download. Probably this ep is not released yet.")
-        return False
-
-    #print("Images to download are:")
-    #for img_url in imgs_to_dl:
-    #    print(img_url)
-
-    headers = {'referer': 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)}
-
-    # ep_id for sorting purposes
-    folder_path = directory_path + ('%04d_' % (ep_id,)) + webtoon_title
-    if not os.path.exists(folder_path):
-        os.makedirs(folder_path)
-
-    for i in range(len(imgs_to_dl)):
-        r = requests.get(imgs_to_dl[i], headers=headers)
-        if r.status_code != 200:
-            print("Get request failed")
+        # I'm too lazy to do error checking! I'm the only user!
         
-        img_file_name = '%03d.jpg' % (i,)
-        with open(folder_path + '/' + img_file_name, 'wb') as outfile:
-            outfile.write(r.content)
+        
+    def close_app(self):
+        root.destroy()
+       
+    def download(self):
+        webtoon_id = int(self.webtoon_id_entry.get())
+        start_ep_id = int(self.start_ep_id_entry.get())
+        output_dir_path = self.output_dir_path_entry.get()
 
-    return True
+        downloader = nwd.NaverWebtoonDownloader(webtoon_id, start_ep_id, output_dir_path)
 
 
-directory_path = input('Input EXISTING directory path WITH SLASH AT THE BACK where you want to download the webtoon')
-webtoon_id = input('Input the webtoon id (eg. 183559): ')
-start_id = input('Input the episode id of the first episode you want to download (eg. 1): ')
-
-# I'm too lazy to do error checking! I'm the only user!
-webtoon_id = int(webtoon_id)
-start_id = int(start_id)
-
-webtoon_list_page_url = 'http://comic.naver.com/webtoon/list.nhn?titleId={}'.format(webtoon_id)
-
-webtoon_list_r = requests.get(webtoon_list_page_url)
-if webtoon_list_r.status_code != 200:
-    print("Get request for webtoon list page failed")
-    exit()
-
-parser = NaverWebtoonListPageParser()
-parser.feed(webtoon_list_r.text)
-
-print("Downloading webtoon from ep_id:" + str(start_id) + " to ep_id:" + str(newest_ep_id) + " started.")
-while start_id <= newest_ep_id:
-    if download_ep(directory_path, webtoon_id, start_id):
-        print("Downloading " + webtoon_title + "complete.")
-        imgs_to_dl = []
-    else:
-        print("Episode #" + str(start_id) + " doesn't exist. Skipping.")
-    start_id += 1
-
-print("Downloading the webtoon complete.")
+root = tk.Tk()
+downloader = WebtoonDownloader(master=root)
+downloader.mainloop()
