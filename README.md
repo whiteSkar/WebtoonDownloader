@@ -1,7 +1,9 @@
-# WebtoonDonwloader
+# WebtoonDownloader
 
 Things to be done
-- show the logs in the log console
-- add some error checking
-- add downloader for other websites
-- add some help message
+- add some error checking (especially the inputs)
+- add downloader for other websites (daum, etc)
+
+Nice to have
+- add some help message (so users know what each input is)
+- image vertial-concatenator 

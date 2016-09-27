@@ -7,11 +7,14 @@ from tkinter import scrolledtext
 class WebtoonDownloader(tk.Frame):
     def __init__(self, master=None):
         master.wm_title("Webtoon Downloader")
-        master.protocol("WM_DELETE_WINDOWS", self.close_app)
+        master.protocol("WM_DELETE_WINDOW", self.close_app)
 
         tk.Frame.__init__(self, master)
         self.pack(fill=tk.BOTH, expand=1)        
         self.create_widgets()
+
+        self.downloader = None
+        self.display_new_logs()
 
     def create_widgets(self):
         menubar = tk.Menu(self)
@@ -91,6 +94,8 @@ class WebtoonDownloader(tk.Frame):
         
         
     def close_app(self):
+        if self.downloader is not None:
+            self.downloader.destroy()
         root.destroy()
        
     def download(self):
@@ -98,7 +103,23 @@ class WebtoonDownloader(tk.Frame):
         start_ep_id = int(self.start_ep_id_entry.get())
         output_dir_path = self.output_dir_path_entry.get()
 
-        downloader = nwd.NaverWebtoonDownloader(webtoon_id, start_ep_id, output_dir_path)
+        if self.downloader is not None and self.downloader.is_downloading():
+            self.display_log("Error: Download is in progress. Wait")
+        else:   # better to use a function and reuse the instance but lazy
+            self.downloader = nwd.NaverWebtoonDownloader(webtoon_id, start_ep_id, output_dir_path)
+
+    def display_new_logs(self):
+        if self.downloader is not None:
+            logs = self.downloader.get_new_logs()
+            for log in logs:
+                self.display_log(log)
+        self.master.after(100, self.display_new_logs)
+
+    def display_log(self, log):
+        self.log_window.config(state=tk.NORMAL)
+        self.log_window.insert(tk.END, "%s\n" % log)
+        self.log_window.yview(tk.END)
+        self.log_window.config(state=tk.DISABLED)
 
 
 root = tk.Tk()

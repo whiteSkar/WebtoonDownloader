@@ -1,7 +1,9 @@
 from html.parser import HTMLParser
 
 import os
+import queue
 import requests
+import threading
 
 
 # Globals
@@ -12,45 +14,61 @@ newest_ep_id = 0
 
 class NaverWebtoonDownloader():
     def __init__(self, webtoon_id, start_id, directory_path):
+        self.log_queue = queue.Queue()
         webtoon_list_page_url = 'http://comic.naver.com/webtoon/list.nhn?titleId={}'.format(webtoon_id)
 
         webtoon_list_r = requests.get(webtoon_list_page_url)
         if webtoon_list_r.status_code != 200:
-            print("Get request for webtoon list page failed")
+            self.log_queue.put("Get request for webtoon list page failed")
             exit()
 
         parser = NaverWebtoonListPageParser()
         parser.feed(webtoon_list_r.text)
 
-        print("Downloading webtoon from ep_id:" + str(start_id) + " to ep_id:" + str(newest_ep_id) + " started.")
-        while start_id <= newest_ep_id:
+        self._is_closing = False
+        self._is_downloading = False
+        self._lock = threading.Lock() 
+        self._th = threading.Thread(target=self.download_eps, kwargs={'webtoon_id': webtoon_id, 'start_id': start_id, 'directory_path': directory_path})
+        self._th.start()
+
+    def download_eps(self, webtoon_id, start_id, directory_path):
+        global imgs_to_dl
+
+        with self._lock:
+            self._is_downloading = True
+
+        self.log_queue.put("Downloading webtoon from ep_id:" + str(start_id) + " to ep_id:" + str(newest_ep_id) + " started.")
+        while start_id <= newest_ep_id and not self._is_closing: # _is_closing is shared but should be fine not to lock it
+            imgs_to_dl = []
             if self.download_ep(directory_path, webtoon_id, start_id):
-                print("Downloading " + webtoon_title + "complete.")
-                imgs_to_dl = []
+                self.log_queue.put("Downloading " + webtoon_title + " with ep_id: " + str(start_id) + " complete.")
             else:
-                print("Episode #" + str(start_id) + " doesn't exist. Skipping.")
+                self.log_queue.put("Episode #" + str(start_id) + " doesn't exist. Skipping.")
             start_id += 1
 
-        print("Downloading the webtoon complete.")
+        self.log_queue.put("Downloading the webtoon complete.")
+        
+        with self._lock:
+            self._is_downloading = False
 
     def download_ep(self, directory_path, webtoon_id, ep_id):
         webtoon_ep_url = 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)
 
         ep_main_page_r = requests.get(webtoon_ep_url)
         if ep_main_page_r.status_code != 200:
-            print("Get request for episode main page failed")
+            self.log_queue.put("Get request for episode main page failed")
             exit()
 
         parser = NaverWebtoonEpParser()
         parser.feed(ep_main_page_r.text)
 
         if len(imgs_to_dl) == 0:
-            print("There are no images to download. Probably this ep is not released yet.")
+            self.log_queue.put("There are no images to download. Probably this ep is not released yet.")
             return False
 
-        #print("Images to download are:")
+        #self.log_queue.put("Images to download are:")
         #for img_url in imgs_to_dl:
-        #    print(img_url)
+        #    self.log_queue.put(img_url)
 
         headers = {'referer': 'http://comic.naver.com/webtoon/detail.nhn?titleId={}&no={}'.format(webtoon_id, ep_id)}
 
@@ -62,13 +80,34 @@ class NaverWebtoonDownloader():
         for i in range(len(imgs_to_dl)):
             r = requests.get(imgs_to_dl[i], headers=headers)
             if r.status_code != 200:
-                print("Get request failed")
+                self.log_queue.put("Get request failed")
             
             img_file_name = '%03d.jpg' % (i,)
             with open(folder_path + '/' + img_file_name, 'wb') as outfile:
                 outfile.write(r.content)
 
         return True
+    
+    def get_new_logs(self):
+        logs = []
+        while not self.log_queue.empty():
+            try:
+                log = self.log_queue.get(block=False)
+                logs.append(log)
+            except queue.Empty():
+                return logs
+        return logs
+
+    # Not bullet proof but enough
+    def is_downloading(self):
+        with self._lock:
+            return self._is_downloading
+
+    def destroy(self):
+        self.log_queue.put("Closing NaverWebtoonDownloader.")
+        self._is_closing = True
+        self._th.join()
+        self.log_queue.put("NaverWebtoonDownloader closed.") 
 
 
 class NaverWebtoonEpParser(HTMLParser):
