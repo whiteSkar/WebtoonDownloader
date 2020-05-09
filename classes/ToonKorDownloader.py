@@ -21,7 +21,7 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36',
 }
 COOKIES = {
-    'cf_clearance': '09092efb8c568981a0df99ef02ff654c52356965-1588999981-0-250',
+    'cf_clearance': 'COPYPASTEHERE',
 }
 
 
