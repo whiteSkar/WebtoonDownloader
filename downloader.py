@@ -1,7 +1,30 @@
 import tkinter as tk
 import classes.NaverWebtoonDownloader as nwd
+import classes.ToonKorDownloader as tkd
 
 from tkinter import scrolledtext
+
+"""
+TODO (not in particular order):
+
+- Download Location pop up
+- Choosing which downloader to use
+- Korean Support
+- (ToonKor) Get cache value as a parameter
+
+
+Nice to have:
+- (ToonKor) Bypass captcha
+"""
+
+"""
+ToonKorDownloader Instruction:
+
+1. manually set webtoon_id with u'name of the webtoon'. It probably uses - instead of spaces
+2. On your browser, load the website and pass the captcha
+3. Reload your page find cf_clearance from the cache
+4. Copy paste the value of cf_clearance to ToonKorDownloader.py
+"""
 
 
 class WebtoonDownloader(tk.Frame):
@@ -92,7 +115,6 @@ class WebtoonDownloader(tk.Frame):
         
         # I'm too lazy to do error checking! I'm the only user!
         
-        
     def close_app(self):
         if self.downloader is not None:
             self.downloader.destroy()
@@ -100,13 +122,19 @@ class WebtoonDownloader(tk.Frame):
        
     def download(self):
         webtoon_id = int(self.webtoon_id_entry.get())
-        start_ep_id = int(self.start_ep_id_entry.get())
+        # Current version of tkinter can't accept korean! fuck!
+        # Is there a better GUI tool? Possibly that works both on macs and windows?
+        # ToonKor Example: webtoon_id = u'나-혼자만-레벨업'
+        try:
+            start_ep_id = int(self.start_ep_id_entry.get())
+        except ValueError:
+            start_ep_id = None
         output_dir_path = self.output_dir_path_entry.get()
 
         if self.downloader is not None and self.downloader.is_downloading():
             self.display_log("Error: Download is in progress. Wait")
         else:   # better to use a function and reuse the instance but lazy
-            self.downloader = nwd.NaverWebtoonDownloader(webtoon_id, start_ep_id, output_dir_path)
+            self.downloader = tkd.Downloader(webtoon_id, start_ep_id, output_dir_path)
 
     def display_new_logs(self):
         if self.downloader is not None:
