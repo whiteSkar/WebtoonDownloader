@@ -124,7 +124,7 @@ class WebtoonDownloader(tk.Frame):
         webtoon_id = int(self.webtoon_id_entry.get())
         # Current version of tkinter can't accept korean! fuck!
         # Is there a better GUI tool? Possibly that works both on macs and windows?
-        # ToonKor Example: webtoon_id = u'나-혼자만-레벨업'
+        # ToonKor Example: webtoon_id = u'웹툰-이름'
         try:
             start_ep_id = int(self.start_ep_id_entry.get())
         except ValueError:
