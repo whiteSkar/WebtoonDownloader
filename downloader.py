@@ -56,7 +56,7 @@ class WebtoonDownloader(tk.Frame):
         self.master.config(menu=menubar)
 
         # webtoon info
-        webtoon_info_frame = tk.Frame(self, relief=tk.RAISED, bd=1)
+        webtoon_info_frame = tk.Frame(self)
         webtoon_info_frame.pack(side=tk.TOP, fill=tk.X)
 
         # webtoon id/number
@@ -101,7 +101,7 @@ class WebtoonDownloader(tk.Frame):
         # self.output_dir_path_choose_btn = output_dir_path_choose_btn
 
         # log console
-        log_frame = tk.Frame(self)
+        log_frame = tk.Frame(self, relief=tk.SUNKEN, bd=1)
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=1)
 
         log_window = scrolledtext.ScrolledText(log_frame, height=10)
