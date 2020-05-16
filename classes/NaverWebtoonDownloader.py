@@ -16,6 +16,11 @@ newest_ep_id = 0
 
 class Downloader():
     def __init__(self, webtoon_id, start_ep_id, directory_path):
+        """
+        webtoon_id: an identifier. Can be a string or an int.
+        directory_path: should end with /
+        """
+
         self.log_queue = queue.Queue()
         webtoon_list_page_url = 'http://comic.naver.com/webtoon/list.nhn?titleId={}'.format(webtoon_id)
 

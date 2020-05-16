@@ -2,12 +2,11 @@ import tkinter as tk
 import classes.NaverWebtoonDownloader as nwd
 import classes.ToonKorDownloader as tkd
 
-from tkinter import scrolledtext
+from tkinter import scrolledtext, filedialog
 
 """
 TODO (not in particular order):
 
-- Download Location pop up
 - Choosing which downloader to use
 - Korean Support
 - (ToonKor) Get cache value as a parameter
@@ -29,22 +28,30 @@ ToonKorDownloader Instruction:
 
 class WebtoonDownloader(tk.Frame):
     def __init__(self, master=None):
-        master.wm_title("Webtoon Downloader")
-        master.protocol("WM_DELETE_WINDOW", self.close_app)
+        # initialize instance variables
+        self.downloader = None
+        self.webtoon_id_entry = None
+        self.start_ep_index_entry = None
+        self.log_window = None
+        self.output_dir_path_chosen_label = None
+        self.download_btn = None
+
+        # initialize the UI
+        master.wm_title('Webtoon Downloader')
+        master.protocol('WM_DELETE_WINDOW', self.close_app)
 
         tk.Frame.__init__(self, master)
-        self.pack(fill=tk.BOTH, expand=1)        
+        self.pack(fill=tk.BOTH, expand=1)
         self.create_widgets()
 
-        self.downloader = None
         self.display_new_logs()
 
     def create_widgets(self):
         menubar = tk.Menu(self)
         
         menu = tk.Menu(menubar, tearoff=0)
-        menu.add_command(label="Exit", command=self.close_app)
-        menubar.add_cascade(label="Menu", menu=menu)
+        menu.add_command(label='Exit', command=self.close_app)
+        menubar.add_cascade(label='Menu', menu=menu)
 
         self.master.config(menu=menubar)
 
@@ -56,7 +63,7 @@ class WebtoonDownloader(tk.Frame):
         webtoon_id_frame = tk.Frame(webtoon_info_frame)
         webtoon_id_frame.pack(side=tk.LEFT)
 
-        webtoon_id_label = tk.Label(webtoon_id_frame, text="Webtoon No.:")
+        webtoon_id_label = tk.Label(webtoon_id_frame, text='Webtoon No.:')
         webtoon_id_label.pack(side=tk.LEFT)
        
         max_webtoon_id_len = 6
@@ -68,7 +75,7 @@ class WebtoonDownloader(tk.Frame):
         start_ep_index_frame = tk.Frame(webtoon_info_frame)
         start_ep_index_frame.pack(side=tk.LEFT)
 
-        start_ep_index_label = tk.Label(start_ep_index_frame, text="Start Index No.:")
+        start_ep_index_label = tk.Label(start_ep_index_frame, text='Start Index No.:')
         start_ep_index_label.pack(side=tk.LEFT)
 
         max_start_ep_index_len = 4
@@ -80,13 +87,18 @@ class WebtoonDownloader(tk.Frame):
         output_dir_path_frame = tk.Frame(self)
         output_dir_path_frame.pack(side=tk.TOP, fill=tk.X)
 
-        output_dir_path_label = tk.Label(output_dir_path_frame, text="Download Location:")
+        output_dir_path_label = tk.Label(output_dir_path_frame, text='Download Location:')
         output_dir_path_label.pack(side=tk.LEFT)
 
-        max_path_len = 100
-        output_dir_path_entry = tk.Entry(output_dir_path_frame, width=max_path_len)
-        output_dir_path_entry.pack(side=tk.LEFT)
-        self.output_dir_path_entry = output_dir_path_entry
+        self.output_dir_path_chosen_label = tk.Label(output_dir_path_frame, text='/')  # default is current directory
+        self.output_dir_path_chosen_label.pack(side=tk.LEFT)
+
+        # output directory choose button
+        output_dir_path_choose_btn = tk.Button(output_dir_path_frame)
+        output_dir_path_choose_btn['text'] = 'Choosde Directory'
+        output_dir_path_choose_btn['command'] = self._assign_output_directory_path
+        output_dir_path_choose_btn.pack(side=tk.RIGHT)
+        # self.output_dir_path_choose_btn = output_dir_path_choose_btn
 
         # log console
         log_frame = tk.Frame(self)
@@ -102,8 +114,8 @@ class WebtoonDownloader(tk.Frame):
         download_btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
         download_btn = tk.Button(download_btn_frame)
-        download_btn["text"] = "Download"
-        download_btn["command"] = self.download
+        download_btn['text'] = 'Download'
+        download_btn['command'] = self.download
         download_btn.pack(side=tk.RIGHT)
         self.download_btn = download_btn
 
@@ -130,10 +142,10 @@ class WebtoonDownloader(tk.Frame):
             start_ep_index = int(self.start_ep_index_entry.get())
         except ValueError:
             start_ep_index = None
-        output_dir_path = self.output_dir_path_entry.get()
+        output_dir_path = self.output_dir_path_chosen_label.get()
 
         if self.downloader is not None and self.downloader.is_downloading():
-            self.display_log("Error: Download is in progress. Wait")
+            self.display_log('Error: Download is in progress. Wait')
         else:   # better to use a function and reuse the instance but lazy
             # TODO: Naver needs start_ep_id and toon kor needs start_ep_indes
             self.downloader = tkd.Downloader(webtoon_id, start_ep_index, output_dir_path)
@@ -147,9 +159,12 @@ class WebtoonDownloader(tk.Frame):
 
     def display_log(self, log):
         self.log_window.config(state=tk.NORMAL)
-        self.log_window.insert(tk.END, "%s\n" % log)
+        self.log_window.insert(tk.END, '%s\n' % log)
         self.log_window.yview(tk.END)
         self.log_window.config(state=tk.DISABLED)
+
+    def _assign_output_directory_path(self):
+        self.output_dir_path_chosen_label['text'] = filedialog.askdirectory() + "/"
 
 
 root = tk.Tk()
