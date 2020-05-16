@@ -65,16 +65,16 @@ class WebtoonDownloader(tk.Frame):
         self.webtoon_id_entry = webtoon_id_entry
 
         # the id/number of the episode of the webtoon you want to start downloading
-        start_ep_id_frame = tk.Frame(webtoon_info_frame)
-        start_ep_id_frame.pack(side=tk.LEFT)
+        start_ep_index_frame = tk.Frame(webtoon_info_frame)
+        start_ep_index_frame.pack(side=tk.LEFT)
 
-        start_ep_id_label = tk.Label(start_ep_id_frame, text="Start Episode No.:")
-        start_ep_id_label.pack(side=tk.LEFT)
+        start_ep_index_label = tk.Label(start_ep_index_frame, text="Start Index No.:")
+        start_ep_index_label.pack(side=tk.LEFT)
 
-        max_start_ep_id_len = 4
-        start_ep_id_entry = tk.Entry(webtoon_info_frame, width=max_start_ep_id_len)
-        start_ep_id_entry.pack(side=tk.LEFT)
-        self.start_ep_id_entry = start_ep_id_entry
+        max_start_ep_index_len = 4
+        start_ep_index_entry = tk.Entry(webtoon_info_frame, width=max_start_ep_index_len)
+        start_ep_index_entry.pack(side=tk.LEFT)
+        self.start_ep_index_entry = start_ep_index_entry
        
         # the location where you want the downloaded webtoons to be on disk
         output_dir_path_frame = tk.Frame(self)
@@ -121,20 +121,22 @@ class WebtoonDownloader(tk.Frame):
         root.destroy()
        
     def download(self):
-        webtoon_id = int(self.webtoon_id_entry.get())
+        # webtoon_id = int(self.webtoon_id_entry.get())
+        webtoon_id = u'트레이스'
         # Current version of tkinter can't accept korean! fuck!
         # Is there a better GUI tool? Possibly that works both on macs and windows?
         # ToonKor Example: webtoon_id = u'웹툰-이름'
         try:
-            start_ep_id = int(self.start_ep_id_entry.get())
+            start_ep_index = int(self.start_ep_index_entry.get())
         except ValueError:
-            start_ep_id = None
+            start_ep_index = None
         output_dir_path = self.output_dir_path_entry.get()
 
         if self.downloader is not None and self.downloader.is_downloading():
             self.display_log("Error: Download is in progress. Wait")
         else:   # better to use a function and reuse the instance but lazy
-            self.downloader = tkd.Downloader(webtoon_id, start_ep_id, output_dir_path)
+            # TODO: Naver needs start_ep_id and toon kor needs start_ep_indes
+            self.downloader = tkd.Downloader(webtoon_id, start_ep_index, output_dir_path)
 
     def display_new_logs(self):
         if self.downloader is not None:

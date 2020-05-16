@@ -15,7 +15,7 @@ newest_ep_id = 0
 
 
 class Downloader():
-    def __init__(self, webtoon_id, start_id, directory_path):
+    def __init__(self, webtoon_id, start_ep_id, directory_path):
         self.log_queue = queue.Queue()
         webtoon_list_page_url = 'http://comic.naver.com/webtoon/list.nhn?titleId={}'.format(webtoon_id)
 
@@ -30,24 +30,24 @@ class Downloader():
         self._is_closing = False
         self._is_downloading = False
         self._lock = threading.Lock()
-        self._th = threading.Thread(target=self.download_eps, kwargs={'webtoon_id': webtoon_id, 'start_id': start_id, 'directory_path': directory_path})
+        self._th = threading.Thread(target=self.download_eps, kwargs={'webtoon_id': webtoon_id, 'start_ep_id': start_ep_id, 'directory_path': directory_path})
         self._th.start()
 
-    def download_eps(self, webtoon_id, start_id, directory_path):
+    def download_eps(self, webtoon_id, start_ep_id, directory_path):
         global imgs_to_dl
 
         with self._lock:
             self._is_downloading = True
 
-        self.log_queue.put('Downloading webtoon from ep_id:' + str(start_id) + ' to ep_id:' + str(newest_ep_id) + ' started.')
-        while start_id <= newest_ep_id and not self._is_closing: # _is_closing is shared but should be fine not to lock it
+        self.log_queue.put('Downloading webtoon from ep_id:' + str(start_ep_id) + ' to ep_id:' + str(newest_ep_id) + ' started.')
+        while start_ep_id <= newest_ep_id and not self._is_closing: # _is_closing is shared but should be fine not to lock it
             imgs_to_dl = []
-            if self.download_ep(directory_path, webtoon_id, start_id):
-                self.log_queue.put('Downloading ' + webtoon_title + ' with ep_id: ' + str(start_id) + ' complete.')
+            if self.download_ep(directory_path, webtoon_id, start_ep_id):
+                self.log_queue.put('Downloading ' + webtoon_title + ' with ep_id: ' + str(start_ep_id) + ' complete.')
             else:
-                self.log_queue.put('Episode #' + str(start_id) + ' doesn\'t exist. Skipping.')
+                self.log_queue.put('Episode #' + str(start_ep_id) + ' doesn\'t exist. Skipping.')
 
-            start_id += 1
+            start_ep_id += 1
             sleep(1)
 
         self.log_queue.put('Downloading the webtoon complete.')

@@ -7,38 +7,45 @@ import queue
 import requests
 import threading
 import base64
-import re
+import random
 
 # Globals
-episode_title = ''
-imgs_to_dl = []
-episode_urls = []
-start_ep_id = None
-number_of_eps_before_start = 0
+global_episode_title = ''
+global_imgs_to_dl = []
+global_episode_urls = []
+global_start_ep_index = 0
 
-DOMAIN = 'https://tkor.life'
+DOMAIN = 'https://tkor.fun'
 HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36',
 }
+
+DEFAULT_CF_CLEARANCE = 'DEFAULT_CF_CLEARANCE'
 COOKIES = {
-    'cf_clearance': 'COPYPASTEHERE',
+    'cf_clearance': DEFAULT_CF_CLEARANCE,
 }
 
 
 class Downloader(object):
-    def __init__(self, webtoon_id, start_id, directory_path):
+    def __init__(self, webtoon_id, start_ep_index, directory_path):
         """
         :param webtoon_id: an identifier. Can be a string or an int.
         """
-        global start_ep_id, number_of_eps_before_start
+        global global_start_ep_index
 
-        start_ep_id = start_id
-        number_of_eps_before_start = 0
+        global_start_ep_index = start_ep_index
 
         self.log_queue = queue.Queue()
         webtoon_list_page_url = '%s/%s' % (DOMAIN, webtoon_id)
 
-        webtoon_list_r = requests.get(webtoon_list_page_url, headers=HEADERS, cookies=COOKIES)
+        request_params = {
+            'url': webtoon_list_page_url,
+            'headers': HEADERS,
+        }
+        if COOKIES['cf_clearance'] != DEFAULT_CF_CLEARANCE:
+            request_params['cookies'] = COOKIES
+
+        webtoon_list_r = requests.get(**request_params)
         if webtoon_list_r.status_code != 200:
             self.log_queue.put('Get request for webtoon list page failed - url: %s' % webtoon_list_page_url)
             self.log_queue.put('webtoon_list_r is: %s' % webtoon_list_r)
@@ -54,32 +61,33 @@ class Downloader(object):
         self._th.start()
 
     def download_eps(self, directory_path):
-        global imgs_to_dl, number_of_eps_before_start
+        global global_imgs_to_dl, global_episode_urls
 
         with self._lock:
             self._is_downloading = True
 
-        episode_urls.reverse()
+        global_episode_urls.reverse()
         self.log_queue.put('Downloading %s episodes from ep: %s to ep: %s'
-                           % (len(episode_urls), episode_urls[0][1:-5], episode_urls[-1][1:-5]))
+                           % (len(global_episode_urls),
+                              global_episode_urls[global_start_ep_index][1:-5],
+                              global_episode_urls[-1][1:-5]))
 
-        number_of_eps_before_start += 1  # index starts from 1 so add 1
-        for episode_url in episode_urls:
+        for i in range(global_start_ep_index, len(global_episode_urls)):
+            episode_url = global_episode_urls[i]
             if self._is_closing:  # _is_closing is shared but should be fine not to lock it
                 break
 
-            imgs_to_dl = []
+            global_imgs_to_dl = []
             try:
-                if self.download_ep(directory_path, episode_url, number_of_eps_before_start):
-                    self.log_queue.put('Downloading ' + episode_title + ' complete.')
+                if self.download_ep(directory_path, episode_url, i):
+                    self.log_queue.put('Downloading ' + global_episode_title + ' complete.')
                 else:
                     self.log_queue.put('Failed to download episode with url ' + episode_url + '. Skipping.')
             except ValueError as e:
-                print('Failed to download episode - e: ' % e)
+                self.log_queue.put('Failed to download episode: %s\n%s' % (global_episode_title, e))
                 break
 
-            number_of_eps_before_start += 1
-            sleep(1)
+            sleep(random.uniform(0.75, 1.25))
 
         self.log_queue.put('Downloading the webtoon complete.')
 
@@ -100,24 +108,24 @@ class Downloader(object):
         parser = EpParser()
         parser.feed(ep_main_page_r.text)
 
-        if len(imgs_to_dl) == 0:
+        if len(global_imgs_to_dl) == 0:
             self.log_queue.put('There are no images to download. Probably this ep is not released yet.')
             return False
 
-        # self.log_queue.put('Images to download are:')
-        # for img_url in imgs_to_dl:
-        #    self.log_queue.put(img_url)
-
-        headers = {'referer': webtoon_ep_url}
+        # print('Images to download are: %s' % global_imgs_to_dl)
 
         # ep_id for sorting purposes
-        folder_path = directory_path + ('%04d_' % (index,)) + episode_title
+        folder_path = directory_path + ('%04d_' % (index,)) + global_episode_title
         if not os.path.exists(folder_path):
             os.makedirs(folder_path)
 
-        for i in range(len(imgs_to_dl)):
-            # print('Downloading img: %s' % imgs_to_dl[i])
-            r = requests.get(imgs_to_dl[i], headers=HEADERS, cookies=COOKIES)
+        for i in range(len(global_imgs_to_dl)):
+            # print('Downloading img: %s' % global_imgs_to_dl[i])
+            try:
+                r = requests.get(global_imgs_to_dl[i], headers=HEADERS, cookies=COOKIES)
+            except requests.exceptions.ConnectionError as e:
+                raise ValueError(str(e))
+
             if r.status_code != 200:
                 self.log_queue.put('Get request failed')
 
@@ -155,12 +163,12 @@ class Downloader(object):
 
 class EpParser(HTMLParser):
     def handle_data(self, data):
-        global episode_title
+        global global_episode_title
 
         # Yay there is only one tag that starts with h1!
         if self.get_starttag_text() == '<h1>' and data.strip():
-            episode_title = data
-            # print('EpParser - episode_title: %s' % episode_title)
+            global_episode_title = data
+            # print('EpParser - global_episode_title: %s' % global_episode_title)
 
         if 'toon_img' in data:
             data_list = data.split('\'')
@@ -175,11 +183,10 @@ class ListPageParser(HTMLParser):
 
     def __init__(self, *, convert_charrefs=True):
         super(ListPageParser, self).__init__(convert_charrefs=convert_charrefs)
-        self.found_start_ep = False
         self.last_ep_url = None
 
     def handle_starttag(self, tag, attrs):
-        global episode_urls, number_of_eps_before_start
+        global global_episode_urls
 
         if tag == 'td' and len(attrs) == 5 and len(attrs[3]) > 1 and attrs[3][0] == 'data-role':
             episode_url = attrs[3][1]
@@ -190,20 +197,20 @@ class ListPageParser(HTMLParser):
 
             self.last_ep_url = episode_url
 
-            if start_ep_id and self.found_start_ep or int(re.search(r'\d+', episode_url).group()) < start_ep_id:
-                # the last ep may not have a number. So use this flag to capture that edge case
-                self.found_start_ep = True
-                number_of_eps_before_start += 1
-                return
-
             # print('episode_url: %s' % episode_url)
-            episode_urls.append(episode_url)
+            global_episode_urls.append(episode_url)
 
 
 class ToonImageParser(HTMLParser):
-    global imgs_to_dl
+    global global_imgs_to_dl
 
     def handle_starttag(self, tag, attrs):
+        # print('tag', tag, 'attrs', attrs)
         img_url = attrs[1][1]
-        imgs_to_dl.append('%s%s' % (DOMAIN, img_url))
+
+        # global_imgs_to_dl.append('%s%s' % (DOMAIN, img_url))
+        if DOMAIN not in img_url:
+            img_url = '%s%s' % (DOMAIN, img_url)
+
+        global_imgs_to_dl.append(img_url)
         # print('EpParser - img_url: %s' % img_url)
