@@ -8,21 +8,19 @@ from tkinter import scrolledtext, filedialog
 TODO (not in particular order):
 
 - Choosing which downloader to use
-- Korean Support
 - (ToonKor) Get cache value as a parameter
 
 
 Nice to have:
-- (ToonKor) Bypass captcha
+- (ToonKor) Bypass captcha (is this even possible?)
 """
 
 """
-ToonKorDownloader Instruction:
+ToonKorDownloader Instruction if it doesn't work due to 403 error:
 
-1. manually set webtoon_id with u'name of the webtoon'. It probably uses - instead of spaces
-2. On your browser, load the website and pass the captcha
-3. Reload your page find cf_clearance from the cache
-4. Copy paste the value of cf_clearance to ToonKorDownloader.py
+1. On your browser, load the website and pass the captcha
+2. Reload your page find cf_clearance from the cache
+3. Copy paste the value of cf_clearance to ToonKorDownloader.py
 """
 
 
@@ -133,11 +131,13 @@ class WebtoonDownloader(tk.Frame):
         root.destroy()
        
     def download(self):
-        # webtoon_id = int(self.webtoon_id_entry.get())
-        webtoon_id = u'트레이스'
-        # Current version of tkinter can't accept korean! fuck!
-        # Is there a better GUI tool? Possibly that works both on macs and windows?
-        # ToonKor Example: webtoon_id = u'웹툰-이름'
+        webtoon_id = self.webtoon_id_entry.get()
+        try:
+            webtoon_id = int(webtoon_id)
+        except ValueError:
+            # If not int, it must be the name of the webtoon.
+            pass
+
         try:
             start_ep_index = int(self.start_ep_index_entry.get())
         except ValueError:

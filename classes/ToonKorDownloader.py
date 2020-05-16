@@ -29,7 +29,7 @@ COOKIES = {
 class Downloader(object):
     def __init__(self, webtoon_id, start_ep_index, directory_path):
         """
-        webtoon_id: an identifier. Can be a string or an int.
+        webtoon_id: an identifier. Can be a string (name) or an int (id).
         directory_path: should end with /
         """
         global global_start_ep_index
