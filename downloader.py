@@ -142,7 +142,7 @@ class WebtoonDownloader(tk.Frame):
             start_ep_index = int(self.start_ep_index_entry.get())
         except ValueError:
             start_ep_index = None
-        output_dir_path = self.output_dir_path_chosen_label.get()
+        output_dir_path = self.output_dir_path_chosen_label['text']
 
         if self.downloader is not None and self.downloader.is_downloading():
             self.display_log('Error: Download is in progress. Wait')

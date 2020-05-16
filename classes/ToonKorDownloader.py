@@ -68,11 +68,13 @@ class Downloader(object):
             self._is_downloading = True
 
         global_episode_urls.reverse()
+        total_eps_to_download_count = len(global_episode_urls[global_start_ep_index:])
         self.log_queue.put('Downloading %s episodes from ep: %s to ep: %s'
-                           % (len(global_episode_urls),
+                           % (total_eps_to_download_count,
                               global_episode_urls[global_start_ep_index][1:-5],
                               global_episode_urls[-1][1:-5]))
 
+        downloaded_eps_count = 1
         for i in range(global_start_ep_index, len(global_episode_urls)):
             episode_url = global_episode_urls[i]
             if self._is_closing:  # _is_closing is shared but should be fine not to lock it
@@ -81,13 +83,15 @@ class Downloader(object):
             global_imgs_to_dl = []
             try:
                 if self.download_ep(directory_path, episode_url, i):
-                    self.log_queue.put('Downloading ' + global_episode_title + ' complete.')
+                    self.log_queue.put('(%s/%s) Downloading %s complete.'
+                                       % (downloaded_eps_count, total_eps_to_download_count, global_episode_title))
                 else:
                     self.log_queue.put('Failed to download episode with url ' + episode_url + '. Skipping.')
             except ValueError as e:
                 self.log_queue.put('Failed to download episode: %s\n%s' % (global_episode_title, e))
                 break
 
+            downloaded_eps_count += 1
             sleep(random.uniform(0.75, 1.25))
 
         self.log_queue.put('Downloading the webtoon complete.')
