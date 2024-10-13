@@ -1,6 +1,6 @@
 # WebtoonDownloader
 
-![Demo](demo.png)
+![Demo](./demo.png)
 
 Instruction:
 1. install virtualenv (if you have some of the latest versions of python, virtualenv will come with it)
