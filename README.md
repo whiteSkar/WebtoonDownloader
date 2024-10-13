@@ -1,5 +1,7 @@
 # WebtoonDownloader
 
+![Demo](demo.png)
+
 Instruction:
 1. install virtualenv (if you have some of the latest versions of python, virtualenv will come with it)
 2. make the root directory of this repo virtual (python3 -m venv /path/to/new/virtual/environment if virtualenv came with python else google yourself)

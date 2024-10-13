@@ -148,7 +148,8 @@ class WebtoonDownloader(tk.Frame):
             self.display_log('Error: Download is in progress. Wait')
         else:   # better to use a function and reuse the instance but lazy
             # TODO: Naver needs start_ep_id and toon kor needs start_ep_indes
-            self.downloader = tkd.Downloader(webtoon_id, start_ep_index, output_dir_path)
+            self.downloader = nwd.Downloader(webtoon_id, start_ep_index, output_dir_path)
+            # self.downloader = tkd.Downloader(webtoon_id, start_ep_index, output_dir_path)
 
     def display_new_logs(self):
         if self.downloader is not None:
