@@ -13,6 +13,8 @@ Caveat:
 Tested with python 3.8.3. No guarantee other versions of python will work.
 At the time of writing this README part, python version 3.6 also worked.
 
+**Note: Currently broken as of 2024.**
+
 Things to be done
 - add some error checking (especially the inputs)
 - add downloader for other websites (daum, etc)
